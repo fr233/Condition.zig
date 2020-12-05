@@ -4,9 +4,10 @@ condition variable for zig lang
 # how to use
 ```
 const Condition = @import("./Condition.zig").Condition;
+var mutex = undefined;
+var cond = undefined;
 ....
 one thread:
-mutex = std.Mutex{};
 cond = Condition.init(&mutex);
 
 const lock = mutex.acquire();
