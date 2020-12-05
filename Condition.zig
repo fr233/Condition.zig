@@ -21,7 +21,7 @@ pub const Condition = struct {
     
     head: ?*Node=null,
     tail: ?*Node=null,
-    mutex: *std.Mutex,
+    mutex: ?*std.Mutex,
     
     const Self = @This();
 
@@ -78,7 +78,7 @@ pub const Condition = struct {
         var node = Node{.status = 1, .reset = std.ResetEvent.init()};
         defer node.reset.deinit();
         self.add_waiter(&node);
-        var lock = std.Mutex.Held{.mutex = self.mutex};
+        var lock = std.Mutex.Held{.mutex = self.mutex.?};
         lock.release();
         //while(@atomicLoad(i32, &node.status, .SeqCst) != 0) {
             node.reset.wait();
@@ -87,7 +87,7 @@ pub const Condition = struct {
                 std.debug.print("waked but status not 0 : {} {} {*} {*}\n", .{std.Thread.getCurrentId(),val, node.next, node.prev});
             }
         //}
-        lock = self.mutex.acquire();
+        lock = self.mutex.?.acquire();
     }
 
     /// wait until signaled or timeout, if signaled, node has already been dequeue, orelse its still in queue,
@@ -97,17 +97,17 @@ pub const Condition = struct {
         defer node.reset.deinit();
         self.add_waiter(&node);
 
-        var lock = std.Mutex.Held{.mutex = self.mutex};
+        var lock = std.Mutex.Held{.mutex = self.mutex.?};
         lock.release();
 
         const deadline = std.time.nanoTimestamp() + @intCast(i128, timeout);
         const ret = node.reset.timedWait(timeout);
         const remain = deadline - std.time.nanoTimestamp();
         if(@atomicLoad(i32, &node.status, .SeqCst) == 0) {
-            lock = self.mutex.acquire();
+            lock = self.mutex.?.acquire();
             return @intCast(i64, remain);
         } else {
-            lock = self.mutex.acquire();
+            lock = self.mutex.?.acquire();
             if (node.status != 0)
                 self.remove_waiter(&node);
                 
